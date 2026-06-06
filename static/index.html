@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AI 知识地图</title>
+    <!-- Google Fonts: Space Grotesk(西文 UI) / JetBrains Mono(数字 标签) / Fraunces(衬线小标题) -->
+    <!-- 离线时自动 fallback 到系统字体(stack 已在 styles.css 里配好) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=JetBrains+Mono:wght@400;600&family=Space+Grotesk:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <!-- 登录覆盖层。app.js 启动时调 /api/auth/me,401 就把它拉出来 -->
+    <div id="auth-overlay" class="auth-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="auth-title">
+      <div class="auth-card">
+        <h2 id="auth-title">AI 知识地图</h2>
+        <p class="auth-sub">企业内部部署 · 请登录</p>
+        <form id="auth-form" class="auth-form" autocomplete="off">
+          <label>
+            用户名
+            <input id="auth-username" name="username" autocomplete="username" required value="admin" />
+          </label>
+          <label>
+            密码
+            <input id="auth-password" name="password" type="password" autocomplete="current-password" required />
+          </label>
+          <button type="submit" class="primary-button" id="auth-submit">登录</button>
+          <p id="auth-error" class="auth-error" aria-live="polite"></p>
+        </form>
+        <p class="auth-hint">默认 admin / admin,登录后请去「设置」修改</p>
+      </div>
+    </div>
+
+    <main class="app-shell">
+      <nav class="side-rail" aria-label="主导航">
+        <header class="sidebar-head">
+          <strong class="sidebar-brand">知识地图</strong>
+          <button id="sidebar-toggle" class="sidebar-toggle-btn" type="button" title="收起边栏">
+          <span class="hamburger"><span></span><span></span><span></span></span>
+        </button>
+        </header>
+        <button id="new-session" class="rail-button rail-action rail-primary" type="button" title="新建学习地图">
+          <span class="rail-icon">＋</span>
+          <span class="rail-label">新地图</span>
+        </button>
+        <label class="sidebar-search">
+          <span>搜索标题</span>
+          <input id="session-search" type="search" autocomplete="off" placeholder="输入关键词" />
+        </label>
+        <div class="sidebar-section-title">最近</div>
+        <div id="session-list" class="session-list"></div>
+        <div class="rail-spacer"></div>
+        <button id="theme-toggle" class="rail-button rail-action" type="button" title="切换黑白模式">
+          <span class="rail-icon">◐</span>
+          <span class="rail-label">黑白模式</span>
+        </button>
+        <button id="avatar-button" class="rail-avatar" type="button" title="用户菜单">
+          <span class="avatar-dot">U</span>
+          <span class="avatar-text">用户</span>
+        </button>
+      </nav>
+
+      <section class="chat-pane" aria-label="AI 对话学习区">
+        <header class="topbar">
+          <div class="status-capsule">
+            <button id="mode-button" class="mode-button" type="button" aria-expanded="false">
+              档位：<strong id="mode-label">Lite</strong>
+            </button>
+            <span>记忆范围：<strong>当前分支记忆</strong></span>
+          </div>
+        </header>
+
+        <section id="starter" class="starter">
+          <h1>锚定，深入。</h1>
+          <p class="starter-sub">先说明学习目的，再生成一棵有顺序的知识地图。</p>
+          <form id="start-form" class="start-form">
+            <label>
+              学习领域
+              <input id="field" name="field" autocomplete="off" required />
+            </label>
+            <label>
+              学习这个知识的目的
+              <textarea id="problem" name="problem" rows="3" required></textarea>
+            </label>
+            <button class="primary-button" type="submit">生成知识地图</button>
+          </form>
+          <section id="background-quiz" class="background-quiz hidden" aria-live="polite"></section>
+          <section id="topic-preview" class="topic-preview hidden" aria-live="polite"></section>
+        </section>
+
+        <section id="workspace" class="workspace hidden">
+          <div id="messages" class="messages" aria-live="polite"></div>
+          <div class="chat-footer">
+            <div id="chat-quote" class="chat-quote hidden" aria-live="polite">
+              <div class="chat-quote-body">
+                <div class="chat-quote-bar" aria-hidden="true"></div>
+                <p class="chat-quote-text"></p>
+              </div>
+              <button id="chat-quote-clear" type="button" class="chat-quote-clear" aria-label="移除引用">×</button>
+            </div>
+            <form id="chat-form" class="composer">
+              <textarea id="chat-input" rows="1" placeholder="输入任何问题，让树生长。"></textarea>
+              <button id="send-button" class="send-button" type="submit" title="发送">↑</button>
+            </form>
+          </div>
+        </section>
+      </section>
+
+      <div id="splitter" class="splitter" role="separator" aria-label="调整左右区域宽度" aria-orientation="vertical"></div>
+
+      <aside class="map-pane" aria-label="知识地图画布">
+        <header class="map-titlebar">
+          <div class="map-title-pill">
+            <span class="map-icon">⌘</span>
+            <div class="map-title-content">
+              <strong id="tree-title">你好啊</strong>
+              <div id="map-breadcrumb" class="map-breadcrumb" aria-label="当前位置"></div>
+            </div>
+          </div>
+          <button class="map-open" type="button" title="打开详情">›</button>
+        </header>
+
+        <div id="current-node" class="current-node" aria-hidden="true"></div>
+        <section id="tree" class="map-canvas tree-empty">
+          <div class="empty-seed">
+            <div class="seed-dot"></div>
+            <p>生成后，节点会从这里长出来。</p>
+          </div>
+        </section>
+
+        <div class="zoom-dock" aria-label="画布缩放">
+          <button id="zoom-out" type="button">−</button>
+          <input id="zoom-range" type="range" min="10" max="180" value="88" />
+          <button id="zoom-in" type="button">＋</button>
+          <button id="zoom-reset" type="button">↻</button>
+          <span id="progress">0%</span>
+        </div>
+        <div id="node-search" class="node-search">
+          <div id="node-search-results" class="node-search-results" role="listbox" aria-label="AI 检索结果" hidden></div>
+          <form id="node-search-form" class="node-search-form" autocomplete="off" role="search">
+            <input
+              id="node-search-input"
+              type="search"
+              placeholder="检索"
+              aria-label="AI 检索知识点"
+              data-tooltip="输入关键词,AI 会从当前知识树里挑出最相关的几个节点"
+            />
+            <button id="node-search-submit" class="node-search-submit" type="submit" aria-label="开始检索" title="检索" data-tooltip="让 AI 现在就检索这个查询">↑</button>
+          </form>
+        </div>
+        <button id="toggle-visited" class="branch-filter" type="button" aria-pressed="false">
+          只看走过
+        </button>
+      </aside>
+    </main>
+
+    <div id="mode-popover" class="mode-popover hidden">
+      <div class="mode-popover-head">
+        <strong>思维深度</strong>
+        <span id="mode-help">轻量拆解，回答更短。</span>
+      </div>
+      <div class="mode-options" role="radiogroup" aria-label="选择思维深度">
+        <button type="button" data-mode="Lite">
+          <strong>Lite</strong>
+          <span>轻量拆解，适合快速建立框架。</span>
+        </button>
+        <button type="button" data-mode="Medium">
+          <strong>Medium</strong>
+          <span>中等深度，分支和解释更完整。</span>
+        </button>
+        <button type="button" data-mode="Zen">
+          <strong>Zen</strong>
+          <span>最深拆解，节点更细，回答更充分。</span>
+        </button>
+      </div>
+    </div>
+
+    <div id="user-menu" class="user-menu hidden" role="menu">
+      <button type="button" data-user-action="settings">设置</button>
+      <button type="button" data-user-action="change-password">修改密码</button>
+      <button type="button" data-user-action="logout">退出登录</button>
+    </div>
+
+    <!-- 设置全页:接管整个视口,顶部 Tab 切 API / Prompt -->
+    <div id="settings-page" class="settings-page hidden" role="dialog" aria-modal="true" aria-labelledby="settings-page-title">
+      <header class="settings-page-head">
+        <button type="button" class="settings-back" data-settings-action="close" aria-label="返回">
+          <span aria-hidden="true">‹</span> 返回
+        </button>
+        <h1 id="settings-page-title">应用设置</h1>
+        <div class="settings-page-head-right"></div>
+      </header>
+      <nav class="settings-page-tabs" role="tablist" aria-label="设置分类">
+        <button type="button" class="settings-tab active" role="tab" data-settings-tab="api" aria-selected="true">API 配置</button>
+        <button type="button" class="settings-tab" role="tab" data-settings-tab="prompts" aria-selected="false">Prompt 模板</button>
+      </nav>
+
+      <!-- Tab: API 配置 -->
+      <section id="settings-tab-api" class="settings-page-body" role="tabpanel" aria-labelledby="settings-tab-api-label">
+        <p class="settings-sub">这里改的配置会立刻覆盖 .env,运行时生效。敏感字段加密存到 DB,展示时只显示末 4 位。</p>
+        <div id="settings-body" class="settings-body" aria-live="polite">正在加载…</div>
+        <div class="settings-page-foot">
+          <button type="button" class="ghost-button" data-settings-action="close">取消</button>
+          <button type="button" class="primary-button" id="settings-save" data-settings-action="save">保存 API 配置</button>
+        </div>
+      </section>
+
+      <!-- Tab: Prompt 模板 -->
+      <section id="settings-tab-prompts" class="settings-page-body hidden" role="tabpanel">
+        <p class="settings-sub">编辑各功能对应的 prompt 模板。模板里用 <code>{变量名}</code> 占位,后端会在运行时安全替换;改空提交则回到代码默认值。</p>
+        <div id="prompts-body" class="settings-body" aria-live="polite">正在加载…</div>
+        <div class="settings-page-foot">
+          <button type="button" class="ghost-button" data-settings-action="close">取消</button>
+          <button type="button" class="primary-button" id="prompts-save" data-prompts-action="save">保存 Prompt 修改</button>
+        </div>
+      </section>
+    </div>
+
+    <!-- 修改密码 drawer -->
+    <div id="password-drawer" class="settings-drawer hidden" role="dialog" aria-modal="true" aria-labelledby="password-title">
+      <div class="settings-backdrop" data-password-action="close"></div>
+      <div class="settings-panel settings-panel-narrow">
+        <header class="settings-head">
+          <h2 id="password-title">修改密码</h2>
+          <button type="button" class="settings-close" data-password-action="close" aria-label="关闭">×</button>
+        </header>
+        <form id="password-form" class="auth-form" autocomplete="off">
+          <label>
+            旧密码
+            <input id="password-old" type="password" autocomplete="current-password" required />
+          </label>
+          <label>
+            新密码 (≥6 位)
+            <input id="password-new" type="password" autocomplete="new-password" minlength="6" required />
+          </label>
+          <label>
+            再次输入新密码
+            <input id="password-confirm" type="password" autocomplete="new-password" minlength="6" required />
+          </label>
+          <button type="submit" class="primary-button">提交</button>
+          <p id="password-error" class="auth-error" aria-live="polite"></p>
+        </form>
+      </div>
+    </div>
+
+    <div id="selection-menu" class="selection-menu hidden" role="menu" aria-label="划词动作">
+      <button type="button" data-selection-action="highlight">
+        <span class="selection-menu-icon">●</span>
+        高亮
+      </button>
+      <button type="button" data-selection-action="explain">
+        <span class="selection-menu-icon">›</span>
+        速览解释
+      </button>
+      <button type="button" data-selection-action="quote">
+        <span class="selection-menu-icon selection-menu-quote-icon">&#x201D;</span>
+        引用
+      </button>
+      <button type="button" data-selection-action="websearch">
+        <span class="selection-menu-icon">⌖</span>
+        联网搜索
+      </button>
+    </div>
+
+    <script src="/static/app.js" type="module"></script>
+  </body>
+</html>

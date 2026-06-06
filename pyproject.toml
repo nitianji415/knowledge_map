@@ -1,0 +1,75 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tjsylva"
+version = "0.4.0"
+description = "TJ Sylva (知识之林) — 左侧 AI 对话、右侧自动生长的结构化知识树。FastAPI + 单一 OpenAI 兼容协议。"
+requires-python = ">=3.11"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "nitianji415" }]
+keywords = ["ai", "llm", "knowledge-map", "learning", "fastapi", "deepseek"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python :: 3.11",
+  "Framework :: FastAPI",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Topic :: Education",
+]
+dependencies = [
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.32",
+  "sqlalchemy[asyncio]>=2.0.30",
+  "alembic>=1.13",
+  "asyncpg>=0.29",
+  "aiosqlite>=0.20",
+  "pydantic>=2.7",
+  "pydantic-settings>=2.4",
+  "httpx>=0.27",
+  "openai>=1.40",
+  "python-multipart>=0.0.9",
+  # 认证 + 配置加密
+  # 直接用 bcrypt,不走 passlib —— passlib 1.7.x 和 bcrypt 4.3+ 在 init 期就互不兼容
+  "bcrypt>=4.0",
+  "pyjwt>=2.9",
+  "cryptography>=43",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8",
+  "pytest-asyncio>=0.23",
+  "anyio>=4",
+  "ruff>=0.6",
+]
+
+[project.urls]
+Homepage = "https://github.com/nitianji415/TJ-Sylva"
+Repository = "https://github.com/nitianji415/TJ-Sylva"
+Issues = "https://github.com/nitianji415/TJ-Sylva/issues"
+
+[project.scripts]
+tjsylva = "app.main:run"
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+exclude = ["tests*", "alembic*", "scripts*", "static*", "data*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+filterwarnings = [
+  "ignore::DeprecationWarning",
+]
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+
+[tool.ruff.lint]
+# 启动期保持核心规则(pycodestyle E、pyflakes F + import 排序 I)能稳定通过 CI。
+# B / UP / SIM 等更激进的规则可由维护者后续逐步开启。
+extend-select = ["I"]

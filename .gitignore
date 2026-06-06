@@ -1,0 +1,30 @@
+.env
+__pycache__/
+*.py[cod]
+.DS_Store
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+.venv/
+build/
+dist/
+
+# 运行时数据:整个 data/ 都是本地产物(SQLite 库、上传、备份),不进仓库。
+# 只保留目录占位,运行时应用会在这里建库。切勿提交真实数据库——里面有用户数据和加密密钥。
+data/*
+!data/.gitkeep
+
+# 备份 / 临时库
+*.bak
+*.sqlite3
+*.sqlite3-*
+
+# 第三方项目本地试用,不进主仓库
+external/
+
+# 临时探针 / 个人脚本产物
+*.log
+
+# 本地素材/产物,不进仓库
+videos/
+pic_sucai/

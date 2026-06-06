@@ -1,0 +1,37 @@
+# 控制 docker build 上下文,加快 build + 减小镜像
+.git
+.gitignore
+.gitattributes
+.venv
+__pycache__
+*.py[cod]
+.pytest_cache
+.ruff_cache
+*.egg-info
+build
+dist
+
+# 第三方 Node 项目 — Docker 里我们从上游 clone,不需要本地 checkout
+external/
+
+# 运行时数据
+data/*.sqlite3
+data/*.sqlite3-*
+
+# 编辑器/系统
+.DS_Store
+.vscode
+.idea
+*.swp
+
+# 环境文件 — 通过 env_file 注入,不打进镜像
+.env
+.env.*
+!.env.example
+
+# Docker 自身产物
+docker-compose.override.yml
+
+# 文档(运行不需要,加快 build);README.md 在 build 阶段被 pyproject 读,需保留
+*.md
+!README.md

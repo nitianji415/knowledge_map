@@ -1,0 +1,86 @@
+# AI 知识地图 一键部署
+#
+# 用法:
+#   cp .env.example .env       # 填 LLM_API_KEY (默认指向 DeepSeek)
+#   docker compose up -d
+#   open http://127.0.0.1:8765
+#
+# 三个 service:
+#   - postgres        持久化数据
+#   - open-websearch  本地免费搜索 daemon (build from github upstream)
+#   - app             FastAPI 后端 + 静态前端
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: knowledge_map_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: knowledge_map
+      POSTGRES_PASSWORD: knowledge_map
+      POSTGRES_DB: knowledge_map
+    # 默认不再暴露 5432 给宿主机,避免和本地已有 PG 撞端口。
+    # 需要直连调试时,取消下面两行注释。
+    # ports:
+    #   - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U knowledge_map -d knowledge_map"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  open-websearch:
+    build:
+      context: .
+      dockerfile: docker/open-websearch.Dockerfile
+    container_name: knowledge_map_websearch
+    restart: unless-stopped
+    # 不必暴露给宿主机,app 通过 docker 内网 hostname 直连。
+    # 想本地 curl 调试时,把下面 ports 打开。
+    # ports:
+    #   - "3210:3210"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3210/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+
+  app:
+    build:
+      context: .
+      dockerfile: docker/app.Dockerfile
+    container_name: knowledge_map_app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      open-websearch:
+        condition: service_started
+    environment:
+      KNOWLEDGE_MAP_HOST: 0.0.0.0
+      KNOWLEDGE_MAP_PORT: 8765
+      DATABASE_URL: postgresql+asyncpg://knowledge_map:knowledge_map@postgres:5432/knowledge_map
+      # daemon 在另一个容器里跑,不要 spawn 子进程
+      OPEN_WEBSEARCH_AUTOSTART: "false"
+      OPEN_WEBSEARCH_URL: http://open-websearch:3210
+      # Phase 2/3:认证 + 加密 secret 从 .env 读;auth 在生产强制开
+      AUTH_ENABLED: "true"
+      # 其它配置(LLM key、ADMIN_PASSWORD、JWT_SECRET 等)从 .env 读
+    # .env 可选(需 Docker Compose v2.24+):不存在也能 `docker compose up` 起来,
+    # 此时用代码内置默认值 + 本地兜底,登录后可在右上角「设置」面板填 LLM key。
+    # 生产部署请 `cp .env.example .env` 并填好 LLM_API_KEY / 改掉默认 secret。
+    env_file:
+      - path: .env
+        required: false
+    ports:
+      - "8765:8765"
+    volumes:
+      # 持久化 SQLite / 上传产物等运行时文件(默认走 postgres,这个目录基本是空的)
+      - app_data:/app/data
+
+volumes:
+  postgres_data:
+  app_data:
